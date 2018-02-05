@@ -4050,10 +4050,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.setSimCardPower(state, null, workSource);
     }
 
-    public SIMRecords getSIMRecords() {
-        return null;
-    }
-
     public void setRadioIndicationUpdateMode(int filters, int mode) {
         if (mDeviceStateMonitor != null) {
             mDeviceStateMonitor.setIndicationUpdateMode(filters, mode);
@@ -4123,6 +4119,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             return ((RIL) mCi).getHalVersion();
         }
         return RIL.RADIO_HAL_VERSION_UNKNOWN;
+    }
+
+    public SIMRecords getSIMRecords() {
+        return null;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

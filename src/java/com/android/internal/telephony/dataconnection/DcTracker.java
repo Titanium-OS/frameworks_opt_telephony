@@ -3535,11 +3535,9 @@ public class DcTracker extends Handler {
         int requestType;
         switch (msg.what) {
             case DctConstants.EVENT_RECORDS_LOADED:
-                // If onRecordsLoadedOrSubIdChanged() is not called here, it should be called on
-                // onSubscriptionsChanged() when a valid subId is available.
-                int subId = mPhone.getSubId();
-                if (mSubscriptionManager.isActiveSubId(subId)) {
-                    onRecordsLoadedOrSubIdChanged();
+                mSimRecords = mPhone.getSIMRecords();
+                if ((mIccRecords.get() instanceof RuimRecords) && (mSimRecords != null)) {
+                    mSimRecords.registerForRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
                 } else {
                     onRecordsLoaded();
                 }
