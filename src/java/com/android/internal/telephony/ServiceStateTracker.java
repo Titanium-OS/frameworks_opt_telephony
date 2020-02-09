@@ -323,6 +323,7 @@ public class ServiceStateTracker extends Handler {
     private int mPrevSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     private boolean mImsRegistered = false;
+    private boolean mCarrierConfigLoaded = false;
 
     @UnsupportedAppUsage
     private SubscriptionManager mSubscriptionManager;
@@ -704,6 +705,7 @@ public class ServiceStateTracker extends Handler {
         mNewSS = new ServiceState();
         mNewSS.setStateOutOfService();
         mLastCellInfoReqTime = 0;
+        mNewSS.setStateOutOfService();
         mLastCellInfoList = null;
         mSignalStrength = new SignalStrength();
         mStartedGprsRegCheck = false;
@@ -2398,7 +2400,12 @@ public class ServiceStateTracker extends Handler {
              * The test for the operators is to handle special roaming
              * agreements and MVNO's.
              */
-            boolean roaming = (mGsmRoaming || mDataRoaming);
+            boolean roaming = (mGsmRoaming || mDataRoaming) && mCarrierConfigLoaded;
+
+            // for IWLAN case, data is home. Only check voice roaming.
+            if (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
+                roaming = mGsmRoaming;
+            }
 
             // for IWLAN case, data is home. Only check voice roaming.
             if (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
@@ -3117,7 +3124,11 @@ public class ServiceStateTracker extends Handler {
                     : TelephonyManager.NETWORK_TYPE_UNKNOWN;
             int newRAT = newNrs != null ? newNrs.getAccessNetworkTechnology()
                     : TelephonyManager.NETWORK_TYPE_UNKNOWN;
-            hasRilDataRadioTechnologyChanged.put(transport, oldRAT != newRAT);
+            boolean isOldCA = oldNrs != null ? (oldNrs.getDataSpecificInfo() != null
+                    ? oldNrs.getDataSpecificInfo().isUsingCarrierAggregation() : false) : false;
+            boolean isNewCA = newNrs!= null ? (newNrs. getDataSpecificInfo() != null
+                    ? newNrs. getDataSpecificInfo().isUsingCarrierAggregation() : false) : false;
+            hasRilDataRadioTechnologyChanged.put(transport, oldRAT != newRAT || isOldCA != isNewCA);
             if (oldRAT != newRAT) {
                 anyDataRatChanged = true;
             }
@@ -3509,7 +3520,8 @@ public class ServiceStateTracker extends Handler {
                     && (mEriManager.isEriFileLoaded())
                     && (!ServiceState.isPsTech(mSS.getRilVoiceRadioTechnology())
                     || mPhone.getContext().getResources().getBoolean(com.android.internal.R
-                    .bool.config_LTE_eri_for_network_name))) {
+                    .bool.config_LTE_eri_for_network_name))
+                    && (!mIsSubscriptionFromRuim)) {
                 // Only when CDMA is in service, ERI will take effect
                 eriText = mSS.getOperatorAlpha();
                 // Now the Phone sees the new ServiceState so it can get the new ERI text
@@ -4689,6 +4701,9 @@ public class ServiceStateTracker extends Handler {
         // Load the ERI based on carrier config. Carrier might have their specific ERI.
         mEriManager.loadEriFile();
         mCdnr.updateEfForEri(getOperatorNameFromEri());
+
+        mCarrierConfigLoaded = true;
+        pollState();
 
         updateLteEarfcnLists(config);
         updateReportingCriteria(config);
